@@ -1,0 +1,15 @@
+POST http://localhost:3000/api/user/register
+Content-Type: application/json
+
+{
+  "email": "pablo1@test.com",
+  "password": "123456"
+}
+###
+PUT http://localhost:3000/api/user/validation
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YzgyNTAzYzljNzQyYTkzN2FkNzhiMSIsImlhdCI6MTc3NDcyNDM1NSwiZXhwIjoxNzc0NzI1MjU1fQ.-CRErxJuYDipmuzoSFjlA5NBEl7KYkrduGv-3Mvartk
+Content-Type: application/json
+
+{
+  "code": "284601"
+}

@@ -95,7 +95,6 @@ userSchema.virtual("fullName").get(function () {
   return `${this.name} ${this.lastName}`.trim();
 });
 
-userSchema.index({ email: 1 });
 userSchema.index({ company: 1 });
 userSchema.index({ status: 1 });
 userSchema.index({ role: 1 });

@@ -5,6 +5,7 @@ import mongoSanitize from "express-mongo-sanitize";
 import morgan from "morgan";
 import cors from "cors";
 import errorMiddleware from "./middleware/error.middleware.js";
+import userRoutes from "./routes/user.routes.js";
 
 const app = express();
 
@@ -12,7 +13,7 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(mongoSanitize());
+//app.use(mongoSanitize({ replaceWith: "_" }));
 app.use(morgan("dev"));
 
 const limiter = rateLimit({
@@ -32,6 +33,8 @@ app.get("/api/health", (req, res) => {
     message: "API funcionando"
   });
 });
+
+app.use("/api/user", userRoutes);
 
 app.use(errorMiddleware);
 
