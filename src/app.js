@@ -4,6 +4,7 @@ import rateLimit from "express-rate-limit";
 import mongoSanitize from "express-mongo-sanitize";
 import morgan from "morgan";
 import cors from "cors";
+import errorMiddleware from "./middleware/error.middleware.js";
 
 const app = express();
 
@@ -31,5 +32,7 @@ app.get("/api/health", (req, res) => {
     message: "API funcionando"
   });
 });
+
+app.use(errorMiddleware);
 
 export default app;
