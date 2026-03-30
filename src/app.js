@@ -1,7 +1,6 @@
 import express from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import mongoSanitize from "express-mongo-sanitize";
 import morgan from "morgan";
 import cors from "cors";
 import errorMiddleware from "./middleware/error.middleware.js";
@@ -13,7 +12,6 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-//app.use(mongoSanitize({ replaceWith: "_" }));
 app.use(morgan("dev"));
 
 const limiter = rateLimit({
@@ -34,6 +32,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+app.use("/uploads", express.static("src/uploads"));
 app.use("/api/user", userRoutes);
 
 app.use(errorMiddleware);

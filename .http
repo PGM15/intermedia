@@ -1,33 +1,59 @@
-POST http://localhost:3000/api/user/register
+@baseUrl = http://localhost:3000
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Y2E3ZjZlNTFlYzUxNmJlM2QyNTdlNiIsImlhdCI6MTc3NDg3ODU3NCwiZXhwIjoxNzc0ODc5NDc0fQ.z4mh2SO5xxlmEw4IlfTMG2WhexgdiZCrDKbFCdlYaLE
+@verificationCode = 506407
+
+### Health check
+GET {{baseUrl}}/api/health
+
+### ------------------------------------------------------------
+### 1) REGISTER
+### Crea un usuario nuevo
+### ------------------------------------------------------------
+POST {{baseUrl}}/api/user/register
 Content-Type: application/json
 
 {
-  "email": "srg1@test.com",
+  "email": "cjb@test.com",
   "password": "123456"
 }
-###
-PUT http://localhost:3000/api/user/validation
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Y2E3ODRmMTRhYzlmNzM4MzdiNTg3YyIsImlhdCI6MTc3NDg3Njc1MSwiZXhwIjoxNzc0ODc3NjUxfQ.KKGgfEMoYPKI1y1itV3E4gHim0myCUq1zk2l5vPMGKU
+
+### ------------------------------------------------------------
+### 2) VALIDATION
+### ------------------------------------------------------------
+PUT {{baseUrl}}/api/user/validation
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
-  "code": "224198"
+  "code": "{{verificationCode}}"
 }
-###
-POST http://localhost:3000/api/user/login
+
+### ------------------------------------------------------------
+### 3) LOGIN
+### Solo funciona si el usuario ya está validado
+### ------------------------------------------------------------
+POST {{baseUrl}}/api/user/login
 Content-Type: application/json
 
 {
-  "email": "srg1@test.com",
+  "email": "cjb@test.com",
   "password": "123456"
 }
-###
-GET http://localhost:3000/api/user
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Y2E2MTZjZWU4ZmZlMWZiOTA5ZWQ3NyIsImlhdCI6MTc3NDg3MDk2NCwiZXhwIjoxNzc0ODcxODY0fQ.0MU4tSu7EPgBj_DN0X3qKQAxSxbx7P2xAUG6VoFI1xM
 
-###
-PUT http://localhost:3000/api/user/register
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Y2E2MTZjZWU4ZmZlMWZiOTA5ZWQ3NyIsImlhdCI6MTc3NDg3MDk2NCwiZXhwIjoxNzc0ODcxODY0fQ.0MU4tSu7EPgBj_DN0X3qKQAxSxbx7P2xAUG6VoFI1xM
+### ------------------------------------------------------------
+### 4) GET CURRENT USER
+### Devuelve el usuario autenticado
+### ------------------------------------------------------------
+GET {{baseUrl}}/api/user
+Authorization: Bearer {{accessToken}}
+
+### ------------------------------------------------------------
+### 5) COMPLETE PROFILE / ONBOARDING PERSONAL
+### PUT /api/user/register
+### Completa datos personales del usuario
+### ------------------------------------------------------------
+PUT {{baseUrl}}/api/user/register
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -41,3 +67,66 @@ Content-Type: application/json
     "country": "España"
   }
 }
+
+### ------------------------------------------------------------
+### 6) ASSIGN COMPANY - EMPRESA NUEVA
+### Si el CIF no existe, crea la company y deja al usuario como admin
+### ------------------------------------------------------------
+PATCH {{baseUrl}}/api/user/company
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "isFreelance": false,
+  "name": "Mi Empresa SL",
+  "cif": "B12345678",
+  "address": {
+    "street": "Gran Via 20",
+    "city": "Madrid",
+    "postalCode": "28013",
+    "country": "España"
+  }
+}
+
+### ------------------------------------------------------------
+### 7) ASSIGN COMPANY - UNIRSE A EMPRESA EXISTENTE
+### Usa otro usuario distinto pero el mismo CIF
+### Ese usuario debería quedar como guest
+### ------------------------------------------------------------
+PATCH {{baseUrl}}/api/user/company
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "isFreelance": false,
+  "name": "Mi Empresa SL",
+  "cif": "B12345678",
+  "address": {
+    "street": "Gran Via 20",
+    "city": "Madrid",
+    "postalCode": "28013",
+    "country": "España"
+  }
+}
+
+### ------------------------------------------------------------
+### 8) ASSIGN COMPANY - AUTÓNOMO
+### Requiere haber completado antes el perfil personal
+### ------------------------------------------------------------
+PATCH {{baseUrl}}/api/user/company
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "isFreelance": true
+}
+
+### ------------------------------------------------------------
+### 9) GET CURRENT USER OTRA VEZ
+### ------------------------------------------------------------
+GET {{baseUrl}}/api/user
+Authorization: Bearer {{accessToken}}
+
+### -----------------------------
+### 10) Subir un logo de la empresa
+### ------------------------------

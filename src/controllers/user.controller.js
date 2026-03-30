@@ -188,3 +188,126 @@ export const completeProfile = catchAsync(async (req, res) => {
     }
   });
 });
+
+
+export const assignCompany = catchAsync(async (req, res) => {
+  const user = await User.findById(req.user._id);
+
+  if (!user || user.deleted) {
+    throw new AppError("Usuario no encontrado", 404);
+  }
+
+  if (user.status !== "active") {
+    throw new AppError("Debes validar tu cuenta antes de asociar una empresa", 401);
+  }
+
+  const { isFreelance, name, cif, address } = req.body;
+
+  let company;
+
+  if (isFreelance) {
+    if (!user.nif) {
+      throw new AppError("Debes completar tu perfil antes de darte de alta como autónomo", 400);
+    }
+
+    company = await Company.findOne({ cif: user.nif, deleted: false });
+
+    if (!company) {
+      company = await Company.create({
+        owner: user._id,
+        name: user.fullName || user.email,
+        cif: user.nif,
+        address: user.address,
+        isFreelance: true
+      });
+    }
+
+    user.company = company._id;
+    user.role = "admin";
+
+    await user.save();
+
+    const populatedUser = await User.findById(user._id)
+      .populate("company")
+      .select("-password -refreshToken -verificationCode -verificationAttempts");
+
+    return res.status(200).json({
+      ok: true,
+      message: "Empresa de autónomo asignada correctamente",
+      data: {
+        user: populatedUser
+      }
+    });
+  }
+
+  company = await Company.findOne({ cif, deleted: false });
+
+  if (!company) {
+    company = await Company.create({
+      owner: user._id,
+      name,
+      cif,
+      address,
+      isFreelance: false
+    });
+
+    user.company = company._id;
+    user.role = "admin";
+  } else {
+    user.company = company._id;
+    user.role = "guest";
+  }
+
+  await user.save();
+
+  const populatedUser = await User.findById(user._id)
+    .populate("company")
+    .select("-password -refreshToken -verificationCode -verificationAttempts");
+
+  res.status(200).json({
+    ok: true,
+    message: "Empresa asignada correctamente",
+    data: {
+      user: populatedUser
+    }
+  });
+});
+
+
+//Controlador para subir el logo de la empresa
+export const uploadCompanyLogo = catchAsync(async (req, res) => {
+  const user = await User.findById(req.user._id);
+
+  if (!user || user.deleted) {
+    throw new AppError("Usuario no encontrado", 404);
+  }
+
+  if (!user.company) {
+    throw new AppError("El usuario no tiene ninguna empresa asociada", 400);
+  }
+
+  if (!req.file) {
+    throw new AppError("Debes subir un archivo de imagen", 400);
+  }
+
+  const company = await Company.findById(user.company);
+
+  if (!company || company.deleted) {
+    throw new AppError("Empresa no encontrada", 404);
+  }
+
+  company.logo = `/uploads/${req.file.filename}`;
+  await company.save();
+
+  const populatedUser = await User.findById(user._id)
+    .populate("company")
+    .select("-password -refreshToken -verificationCode -verificationAttempts");
+
+  res.status(200).json({
+    ok: true,
+    message: "Logo subido correctamente",
+    data: {
+      user: populatedUser
+    }
+  });
+});

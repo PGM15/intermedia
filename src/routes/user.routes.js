@@ -13,6 +13,10 @@ import {
   loginSchema,
   completeProfileSchema
 } from "../validators/user.validator.js";
+import { assignCompany } from "../controllers/user.controller.js";
+import { companySchema } from "../validators/user.validator.js";
+import { uploadCompanyLogo } from "../controllers/user.controller.js";
+import upload from "../middleware/upload.middleware.js"
 
 const router = Router();
 
@@ -21,5 +25,7 @@ router.put("/validation", protect, validateUser);
 router.post("/login", validate(loginSchema), loginUser);
 router.get("/", protect, getMe);
 router.put("/register", protect, validate(completeProfileSchema), completeProfile);
+router.patch("/company", protect, validate(companySchema), assignCompany);
+router.patch("/logo", protect, upload.single("logo"), uploadCompanyLogo);
 
 export default router;
