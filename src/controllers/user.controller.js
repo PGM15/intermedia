@@ -4,6 +4,7 @@ import AppError from "../utils/appError.js";
 import catchAsync from "../utils/catchAsync.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/token.js";
 import { generateVerificationCode } from "../utils/generateVerificationCode.js";
+import Company from "../models/company.model.js"
 
 export const registerUser = catchAsync(async (req, res) => {
   const { email, password } = req.body;
@@ -56,19 +57,19 @@ export const registerUser = catchAsync(async (req, res) => {
 });
 
 export const validateUser = catchAsync(async (req, res) => {
-  const { code } = req.body;
-
+  const { code } = req.body || {};
   const user = req.user;
+
+  if (!code) {
+    throw new AppError("Debes enviar el código de verificación", 400);
+  }
 
   if (user.status === "active") {
     throw new AppError("El usuario ya está validado", 400);
   }
 
   if (user.verificationAttempts <= 0) {
-    throw new AppError(
-      "Has superado el número máximo de intentos",
-      429
-    );
+    throw new AppError("Has superado el número máximo de intentos", 429);
   }
 
   if (user.verificationCode !== code) {
@@ -90,5 +91,100 @@ export const validateUser = catchAsync(async (req, res) => {
   res.status(200).json({
     ok: true,
     message: "Usuario validado correctamente"
+  });
+});
+
+//Controlador para el login de usuarios
+export const loginUser = catchAsync(async (req, res) => {
+  const { email, password } = req.body;
+
+  const user = await User.findOne({ email, deleted: false });
+
+  if (!user) {
+    throw new AppError("Credenciales incorrectas", 401);
+  }
+
+  const isMatch = await bcrypt.compare(password, user.password);
+
+  if (!isMatch) {
+    throw new AppError("Credenciales incorrectas", 401);
+  }
+
+  if (user.status !== "active") {
+    throw new AppError("Debes validar tu cuenta antes de iniciar sesión", 401);
+  }
+
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+
+  user.refreshToken = refreshToken;
+  await user.save();
+
+  res.status(200).json({
+    ok: true,
+    message: "Login correcto",
+    data: {
+      user: {
+        id: user._id,
+        email: user.email,
+        status: user.status,
+        role: user.role,
+        fullName: user.fullName
+      },
+      accessToken,
+      refreshToken
+    }
+  });
+});
+
+//Controlador para el GET
+export const getMe = catchAsync(async (req, res) => {
+  const user = await User.findById(req.user._id)
+    .populate("company")
+    .select("-password -refreshToken -verificationCode -verificationAttempts");
+
+  if (!user) {
+    throw new AppError("Usuario no encontrado", 404);
+  }
+
+  res.status(200).json({
+    ok: true,
+    data: {
+      user
+    }
+  });
+});
+
+
+export const completeProfile = catchAsync(async (req, res) => {
+  const { name, lastName, nif, address } = req.body;
+
+  if(req.user.status !== "active"){
+    throw new AppError("Debes validar tu cuenta antes de completar el perfil", 401);
+  }
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      name,
+      lastName,
+      nif,
+      address
+    },
+    {
+      new: true,
+      runValidators: true
+    }
+  ).select("-password -refreshToken -verificationCode -verificationAttempts");
+
+  if (!updatedUser) {
+    throw new AppError("Usuario no encontrado", 404);
+  }
+
+  res.status(200).json({
+    ok: true,
+    message: "Datos personales actualizados correctamente",
+    data: {
+      user: updatedUser
+    }
   });
 });
