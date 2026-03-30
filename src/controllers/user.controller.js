@@ -1,10 +1,16 @@
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 import AppError from "../utils/appError.js";
 import catchAsync from "../utils/catchAsync.js";
-import { generateAccessToken, generateRefreshToken } from "../utils/token.js";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyRefreshToken,
+} from "../utils/token.js";
 import { generateVerificationCode } from "../utils/generateVerificationCode.js";
-import Company from "../models/company.model.js"
+import Company from "../models/company.model.js";
+import notificationEmitter from "../services/notification.service.js";
 
 export const registerUser = catchAsync(async (req, res) => {
   const { email, password } = req.body;
@@ -31,7 +37,7 @@ export const registerUser = catchAsync(async (req, res) => {
     password: hashedPassword,
     verificationCode,
     verificationAttempts: 3,
-    status: "pending"
+    status: "pending",
   });
 
   const accessToken = generateAccessToken(user._id);
@@ -40,6 +46,8 @@ export const registerUser = catchAsync(async (req, res) => {
   user.refreshToken = refreshToken;
   await user.save();
 
+  notificationEmitter.emit("user.registered", user);
+
   res.status(201).json({
     ok: true,
     message: "Usuario registrado correctamente",
@@ -47,12 +55,12 @@ export const registerUser = catchAsync(async (req, res) => {
       user: {
         id: user._id,
         email: user.email,
-        status: user.status
+        status: user.status,
       },
       accessToken,
       refreshToken,
-      verificationCode
-    }
+      verificationCode,
+    },
   });
 });
 
@@ -85,16 +93,17 @@ export const validateUser = catchAsync(async (req, res) => {
   user.status = "active";
   user.verificationCode = null;
   user.verificationAttempts = 0;
-
   await user.save();
+
+  notificationEmitter.emit("user.validated", user);
 
   res.status(200).json({
     ok: true,
-    message: "Usuario validado correctamente"
+    message: "Usuario validado correctamente",
   });
 });
 
-//Controlador para el login de usuarios
+// Controlador para el login de usuarios
 export const loginUser = catchAsync(async (req, res) => {
   const { email, password } = req.body;
 
@@ -120,6 +129,8 @@ export const loginUser = catchAsync(async (req, res) => {
   user.refreshToken = refreshToken;
   await user.save();
 
+  notificationEmitter.emit("user.logged_in", user);
+
   res.status(200).json({
     ok: true,
     message: "Login correcto",
@@ -129,15 +140,71 @@ export const loginUser = catchAsync(async (req, res) => {
         email: user.email,
         status: user.status,
         role: user.role,
-        fullName: user.fullName
+        fullName: user.fullName,
       },
       accessToken,
-      refreshToken
-    }
+      refreshToken,
+    },
   });
 });
 
-//Controlador para el GET
+// Controlador para refrescar sesión
+export const refreshSession = catchAsync(async (req, res) => {
+  const { refreshToken } = req.body;
+
+  let decoded;
+
+  try {
+    decoded = verifyRefreshToken(refreshToken);
+  } catch (error) {
+    throw new AppError("Refresh token inválido o expirado", 401);
+  }
+
+  const user = await User.findById(decoded.id);
+
+  if (!user || user.deleted) {
+    throw new AppError("Usuario no encontrado", 401);
+  }
+
+  if (!user.refreshToken || user.refreshToken !== refreshToken) {
+    throw new AppError("Refresh token inválido", 401);
+  }
+
+  const newAccessToken = generateAccessToken(user._id);
+
+  res.status(200).json({
+    ok: true,
+    message: "Token renovado correctamente",
+    data: {
+      accessToken: newAccessToken,
+    },
+  });
+});
+
+// Controlador para cerrar sesión
+export const logoutUser = catchAsync(async (req, res) => {
+  const { refreshToken } = req.body;
+
+  const user = await User.findById(req.user._id);
+
+  if (!user || user.deleted) {
+    throw new AppError("Usuario no encontrado", 404);
+  }
+
+  if (!user.refreshToken || user.refreshToken !== refreshToken) {
+    throw new AppError("Refresh token inválido", 401);
+  }
+
+  user.refreshToken = null;
+  await user.save();
+
+  res.status(200).json({
+    ok: true,
+    message: "Logout correcto",
+  });
+});
+
+// Controlador para el GET
 export const getMe = catchAsync(async (req, res) => {
   const user = await User.findById(req.user._id)
     .populate("company")
@@ -149,31 +216,24 @@ export const getMe = catchAsync(async (req, res) => {
 
   res.status(200).json({
     ok: true,
-    data: {
-      user
-    }
+    data: { user },
   });
 });
-
 
 export const completeProfile = catchAsync(async (req, res) => {
   const { name, lastName, nif, address } = req.body;
 
-  if(req.user.status !== "active"){
-    throw new AppError("Debes validar tu cuenta antes de completar el perfil", 401);
+  if (req.user.status !== "active") {
+    throw new AppError(
+      "Debes validar tu cuenta antes de completar el perfil",
+      401
+    );
   }
+
   const updatedUser = await User.findByIdAndUpdate(
     req.user._id,
-    {
-      name,
-      lastName,
-      nif,
-      address
-    },
-    {
-      new: true,
-      runValidators: true
-    }
+    { name, lastName, nif, address },
+    { new: true, runValidators: true }
   ).select("-password -refreshToken -verificationCode -verificationAttempts");
 
   if (!updatedUser) {
@@ -183,12 +243,9 @@ export const completeProfile = catchAsync(async (req, res) => {
   res.status(200).json({
     ok: true,
     message: "Datos personales actualizados correctamente",
-    data: {
-      user: updatedUser
-    }
+    data: { user: updatedUser },
   });
 });
-
 
 export const assignCompany = catchAsync(async (req, res) => {
   const user = await User.findById(req.user._id);
@@ -198,16 +255,21 @@ export const assignCompany = catchAsync(async (req, res) => {
   }
 
   if (user.status !== "active") {
-    throw new AppError("Debes validar tu cuenta antes de asociar una empresa", 401);
+    throw new AppError(
+      "Debes validar tu cuenta antes de asociar una empresa",
+      401
+    );
   }
 
   const { isFreelance, name, cif, address } = req.body;
-
   let company;
 
   if (isFreelance) {
     if (!user.nif) {
-      throw new AppError("Debes completar tu perfil antes de darte de alta como autónomo", 400);
+      throw new AppError(
+        "Debes completar tu perfil antes de darte de alta como autónomo",
+        400
+      );
     }
 
     company = await Company.findOne({ cif: user.nif, deleted: false });
@@ -218,13 +280,12 @@ export const assignCompany = catchAsync(async (req, res) => {
         name: user.fullName || user.email,
         cif: user.nif,
         address: user.address,
-        isFreelance: true
+        isFreelance: true,
       });
     }
 
     user.company = company._id;
     user.role = "admin";
-
     await user.save();
 
     const populatedUser = await User.findById(user._id)
@@ -234,9 +295,7 @@ export const assignCompany = catchAsync(async (req, res) => {
     return res.status(200).json({
       ok: true,
       message: "Empresa de autónomo asignada correctamente",
-      data: {
-        user: populatedUser
-      }
+      data: { user: populatedUser },
     });
   }
 
@@ -248,9 +307,8 @@ export const assignCompany = catchAsync(async (req, res) => {
       name,
       cif,
       address,
-      isFreelance: false
+      isFreelance: false,
     });
-
     user.company = company._id;
     user.role = "admin";
   } else {
@@ -267,14 +325,11 @@ export const assignCompany = catchAsync(async (req, res) => {
   res.status(200).json({
     ok: true,
     message: "Empresa asignada correctamente",
-    data: {
-      user: populatedUser
-    }
+    data: { user: populatedUser },
   });
 });
 
-
-//Controlador para subir el logo de la empresa
+// Controlador para subir el logo de la empresa
 export const uploadCompanyLogo = catchAsync(async (req, res) => {
   const user = await User.findById(req.user._id);
 
@@ -306,8 +361,6 @@ export const uploadCompanyLogo = catchAsync(async (req, res) => {
   res.status(200).json({
     ok: true,
     message: "Logo subido correctamente",
-    data: {
-      user: populatedUser
-    }
+    data: { user: populatedUser },
   });
 });

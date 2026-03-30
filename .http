@@ -1,6 +1,7 @@
 @baseUrl = http://localhost:3000
-@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Y2E3ZjZlNTFlYzUxNmJlM2QyNTdlNiIsImlhdCI6MTc3NDg3ODU3NCwiZXhwIjoxNzc0ODc5NDc0fQ.z4mh2SO5xxlmEw4IlfTMG2WhexgdiZCrDKbFCdlYaLE
-@verificationCode = 506407
+@accessToken = PEGA_AQUI_EL_ACCESS_TOKEN
+@refreshToken = PEGA_AQUI_EL_REFRESH_TOKEN
+@verificationCode = 324368
 
 ### Health check
 GET {{baseUrl}}/api/health
@@ -13,7 +14,7 @@ POST {{baseUrl}}/api/user/register
 Content-Type: application/json
 
 {
-  "email": "cjb@test.com",
+  "email": "cjb1@test.com",
   "password": "123456"
 }
 
@@ -31,6 +32,9 @@ Content-Type: application/json
 ### ------------------------------------------------------------
 ### 3) LOGIN
 ### Solo funciona si el usuario ya está validado
+### IMPORTANTE:
+### - copia el accessToken de la respuesta en @accessToken
+### - copia el refreshToken de la respuesta en @refreshToken
 ### ------------------------------------------------------------
 POST {{baseUrl}}/api/user/login
 Content-Type: application/json
@@ -129,4 +133,42 @@ Authorization: Bearer {{accessToken}}
 
 ### -----------------------------
 ### 10) Subir un logo de la empresa
+### Hay que probarlo en Postman
 ### ------------------------------
+
+### ------------------------------------------------------------
+### 11) REFRESH SESSION
+### Envía el refresh token y debe devolver un nuevo accessToken
+### Si tu implementación también rota refresh token,
+### copia también el nuevo refreshToken en @refreshToken
+### ------------------------------------------------------------
+POST {{baseUrl}}/api/user/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### ------------------------------------------------------------
+### 12) LOGOUT
+### Requiere access token + refresh token
+### Debe invalidar el refresh token guardado
+### ------------------------------------------------------------
+POST {{baseUrl}}/api/user/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### ------------------------------------------------------------
+### 13) REFRESH DESPUÉS DE LOGOUT
+### Debe fallar con 401 porque el refresh token ya no es válido
+### ------------------------------------------------------------
+POST {{baseUrl}}/api/user/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
