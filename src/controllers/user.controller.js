@@ -12,6 +12,8 @@ import { generateVerificationCode } from "../utils/generateVerificationCode.js";
 import Company from "../models/company.model.js";
 import notificationEmitter from "../services/notification.service.js";
 
+
+
 export const registerUser = catchAsync(async (req, res) => {
   const { email, password } = req.body;
 
@@ -362,5 +364,118 @@ export const uploadCompanyLogo = catchAsync(async (req, res) => {
     ok: true,
     message: "Logo subido correctamente",
     data: { user: populatedUser },
+  });
+});
+
+export const deleteUser = catchAsync(async (req, res) => {
+  const { soft } = req.query;
+
+  const user = await User.findById(req.user._id);
+
+  if (!user || user.deleted) {
+    throw new AppError("Usuario no encontrado", 404);
+  }
+
+  if (soft === "true") {
+    user.deleted = true;
+    user.refreshToken = null;
+    await user.save();
+
+    notificationEmitter.emit("user:deleted", user);
+
+    return res.status(200).json({
+      ok: true,
+      message: "Usuario eliminado lógicamente",
+    });
+  }
+
+  await User.findByIdAndDelete(req.user._id);
+
+  notificationEmitter.emit("user:deleted", user);
+
+  res.status(200).json({
+    ok: true,
+    message: "Usuario eliminado definitivamente",
+  });
+});
+
+export const inviteUser = catchAsync(async (req, res) => {
+  const { email, password } = req.body;
+
+  const adminUser = await User.findById(req.user._id);
+
+  if (!adminUser || adminUser.deleted) {
+    throw new AppError("Usuario no encontrado", 404);
+  }
+
+  if (adminUser.role !== "admin") {
+    throw new AppError("No tienes permisos para invitar usuarios", 403);
+  }
+
+  if (!adminUser.company) {
+    throw new AppError("Debes tener una empresa asociada para invitar usuarios", 400);
+  }
+
+  const existingUser = await User.findOne({ email });
+
+  if (existingUser && !existingUser.deleted) {
+    throw new AppError("Ya existe un usuario registrado con ese email", 409);
+  }
+
+  const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 10;
+  const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+  const invitedUser = await User.create({
+    email,
+    password: hashedPassword,
+    role: "guest",
+    status: "verified",
+    company: adminUser.company,
+    verificationCode: null,
+    verificationAttempts: 0,
+  });
+
+  notificationEmitter.emit("user:invited", invitedUser);
+
+  res.status(201).json({
+    ok: true,
+    message: "Usuario invitado correctamente",
+    data: {
+      user: {
+        id: invitedUser._id,
+        email: invitedUser.email,
+        role: invitedUser.role,
+        status: invitedUser.status,
+        company: invitedUser.company,
+      },
+    },
+  });
+});
+
+export const changePassword = catchAsync(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  const user = await User.findById(req.user._id);
+
+  if (!user || user.deleted) {
+    throw new AppError("Usuario no encontrado", 404);
+  }
+
+  const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+  if (!isMatch) {
+    throw new AppError("La contraseña actual es incorrecta", 401);
+  }
+
+  const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 10;
+  const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+  user.password = hashedPassword;
+  user.refreshToken = null;
+  await user.save();
+
+  res.status(200).json({
+    ok: true,
+    message: "Contraseña actualizada correctamente. Debes iniciar sesión de nuevo.",
   });
 });

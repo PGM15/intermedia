@@ -14,4 +14,13 @@ notificationEmitter.on("user.logged_in", (user) => {
   console.log(`[EVENT] Login correcto: ${user.email}`);
 });
 
+notificationEmitter.on("user:deleted", (user) => {
+  console.log(`[EVENT] Usuario eliminado: ${user.email}`);
+});
+
+notificationEmitter.on("user:invited", (user) => {
+  console.log(`[EVENT] Usuario invitado: ${user.email}`);
+});
+
+
 export default notificationEmitter;

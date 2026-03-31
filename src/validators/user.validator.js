@@ -163,3 +163,33 @@ export const logoutSchema = z.object({
     .trim()
     .min(1, "El refresh token es obligatorio"),
 });
+
+export const inviteUserSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Email no válido"),
+
+  password: z
+    .string()
+    .min(8, "La contraseña debe tener al menos 8 caracteres")
+    .max(50, "La contraseña no puede superar los 50 caracteres"),
+});
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z
+      .string()
+      .min(6, "La contraseña actual debe tener al menos 6 caracteres")
+      .max(50, "La contraseña actual no puede superar los 50 caracteres"),
+
+    newPassword: z
+      .string()
+      .min(8, "La nueva contraseña debe tener al menos 8 caracteres")
+      .max(50, "La nueva contraseña no puede superar los 50 caracteres"),
+  })
+  .refine((data) => data.currentPassword !== data.newPassword, {
+    message: "La nueva contraseña debe ser diferente de la actual",
+    path: ["newPassword"],
+  });

@@ -1,7 +1,7 @@
 @baseUrl = http://localhost:3000
-@accessToken = PEGA_AQUI_EL_ACCESS_TOKEN
-@refreshToken = PEGA_AQUI_EL_REFRESH_TOKEN
-@verificationCode = 324368
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Y2E5NGMyOGQzOTExY2FiM2I5YjFmOCIsImlhdCI6MTc3NDg4NDAzNCwiZXhwIjoxNzc0ODg0OTM0fQ.aDMoxSIMU_w01MxRLIlywwVsfHc2kzi84sI90bH4wfA
+@refreshToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Y2E5NGMyOGQzOTExY2FiM2I5YjFmOCIsImlhdCI6MTc3NDg4NDAzNCwiZXhwIjoxNzc1NDg4ODM0fQ.e-49G-MGK--GGUXK6N4I7-i7qjM7U56Gn385RB9wtt0
+@verificationCode = 780234
 
 ### Health check
 GET {{baseUrl}}/api/health
@@ -14,7 +14,7 @@ POST {{baseUrl}}/api/user/register
 Content-Type: application/json
 
 {
-  "email": "cjb1@test.com",
+  "email": "cjb6@test.com",
   "password": "123456"
 }
 
@@ -40,7 +40,7 @@ POST {{baseUrl}}/api/user/login
 Content-Type: application/json
 
 {
-  "email": "cjb@test.com",
+  "email": "cjb6@test.com",
   "password": "123456"
 }
 
@@ -83,7 +83,7 @@ Content-Type: application/json
 {
   "isFreelance": false,
   "name": "Mi Empresa SL",
-  "cif": "B12345678",
+  "cif": "B1345678",
   "address": {
     "street": "Gran Via 20",
     "city": "Madrid",
@@ -139,8 +139,6 @@ Authorization: Bearer {{accessToken}}
 ### ------------------------------------------------------------
 ### 11) REFRESH SESSION
 ### Envía el refresh token y debe devolver un nuevo accessToken
-### Si tu implementación también rota refresh token,
-### copia también el nuevo refreshToken en @refreshToken
 ### ------------------------------------------------------------
 POST {{baseUrl}}/api/user/refresh
 Content-Type: application/json
@@ -171,4 +169,65 @@ Content-Type: application/json
 
 {
   "refreshToken": "{{refreshToken}}"
+}
+### ------------------------------------------------------------
+### 14) DELETE USER - SOFT DELETE
+### Debe marcar deleted=true y anular refreshToken
+### ------------------------------------------------------------
+DELETE {{baseUrl}}/api/user?soft=true
+Authorization: Bearer {{accessToken}}
+### ------------------------------------------------------------
+### 15) DELETE USER - HARD DELETE
+### Debe borrar el documento físicamente
+### ------------------------------------------------------------
+DELETE {{baseUrl}}/api/user
+Authorization: Bearer {{accessToken}}
+### ------------------------------------------------------------
+### 16) INVITE USER
+### Solo admin puede invitar
+### Crea un usuario guest en la misma company del admin
+### ------------------------------------------------------------
+POST {{baseUrl}}/api/user/invite
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "email": "invitado1@test.com",
+  "password": "12345678"
+}
+### ------------------------------------------------------------
+### 17) CHANGE PASSWORD
+### Requiere JWT
+### La nueva contraseña debe ser distinta de la actual
+### ------------------------------------------------------------
+PUT {{baseUrl}}/api/user/password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "12345678",
+  "newPassword": "123456789"
+}
+### ------------------------------------------------------------
+### 18) LOGIN CON NUEVA CONTRASEÑA
+### Debe funcionar con la nueva contraseña
+### ------------------------------------------------------------
+POST {{baseUrl}}/api/user/login
+Content-Type: application/json
+
+{
+  "email": "invitado1@test.com",
+  "password": "123456789"
+}
+### ------------------------------------------------------------
+### 19) CHANGE PASSWORD - ERROR MISMA CONTRASEÑA
+### Debe fallar por el refine de Zod
+### ------------------------------------------------------------
+PUT {{baseUrl}}/api/user/password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "123456789",
+  "newPassword": "123456789"
 }
