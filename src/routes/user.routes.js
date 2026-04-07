@@ -19,6 +19,7 @@ import authorize from "../middleware/role.middleware.js";
 import {
   registerSchema,
   loginSchema,
+  validationSchema,
   completeProfileSchema,
   companySchema,
   refreshSchema,
@@ -31,7 +32,7 @@ import upload from "../middleware/upload.middleware.js";
 const router = Router();
 
 router.post("/register", validate(registerSchema), registerUser);
-router.put("/validation", protect, validateUser);
+router.put("/validation", protect, validate(validationSchema), validateUser);
 router.post("/login", validate(loginSchema), loginUser);
 router.post("/refresh", validate(refreshSchema), refreshSession);
 router.post("/logout", protect, validate(logoutSchema), logoutUser);

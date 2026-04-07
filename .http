@@ -133,7 +133,7 @@ Authorization: Bearer {{accessToken}}
 
 ### -----------------------------
 ### 10) Subir un logo de la empresa
-### Hay que probarlo en Postman
+### Probarlo mejor en Postman - Esta en la carpeta Postman en la raiz del proyecto
 ### ------------------------------
 
 ### ------------------------------------------------------------

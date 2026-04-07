@@ -28,6 +28,13 @@ export const loginSchema = z.object({
     .max(50, "La contraseña no puede superar los 50 caracteres"),
 });
 
+export const validationSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "El código debe tener exactamente 6 dígitos"),
+});
+
 export const completeProfileSchema = z.object({
   name: z
     .string()
@@ -181,7 +188,7 @@ export const changePasswordSchema = z
   .object({
     currentPassword: z
       .string()
-      .min(6, "La contraseña actual debe tener al menos 6 caracteres")
+      .min(8, "La contraseña actual debe tener al menos 8 caracteres")
       .max(50, "La contraseña actual no puede superar los 50 caracteres"),
 
     newPassword: z

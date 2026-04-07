@@ -92,7 +92,7 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.virtual("fullName").get(function () {
-  return `${this.name} ${this.lastName}`.trim();
+  return `${this.name || ""} ${this.lastName || ""}`.trim();
 });
 
 userSchema.index({ company: 1 });
