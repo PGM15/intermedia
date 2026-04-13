@@ -1,7 +1,9 @@
 @baseUrl = http://localhost:3000
-@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Y2E5NGMyOGQzOTExY2FiM2I5YjFmOCIsImlhdCI6MTc3NDg4NDAzNCwiZXhwIjoxNzc0ODg0OTM0fQ.aDMoxSIMU_w01MxRLIlywwVsfHc2kzi84sI90bH4wfA
-@refreshToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Y2E5NGMyOGQzOTExY2FiM2I5YjFmOCIsImlhdCI6MTc3NDg4NDAzNCwiZXhwIjoxNzc1NDg4ODM0fQ.e-49G-MGK--GGUXK6N4I7-i7qjM7U56Gn385RB9wtt0
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Y2E5NGMyOGQzOTExY2FiM2I5YjFmOCIsImlhdCI6MTc3NjA3NjQ5MywiZXhwIjoxNzc2MDc3MzkzfQ.JhHa5Peozf4oxgVM1g7xuwRGWyq80QYrmGTd3Cq9qvs
+@refreshToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Y2E5NGMyOGQzOTExY2FiM2I5YjFmOCIsImlhdCI6MTc3NjA3NjQ2MSwiZXhwIjoxNzc2NjgxMjYxfQ.JcyXReUgzHtsEwC8kQAIxuk6SH4PzOUaSmomrRsQ7d8
 @verificationCode = 780234
+@clientId = 69dcbe1345e02cf24539d4e3
+@projectId = 69dcc6e327bd272daa751382
 
 ### Health check
 GET {{baseUrl}}/api/health
@@ -231,3 +233,115 @@ Content-Type: application/json
   "currentPassword": "123456789",
   "newPassword": "123456789"
 }
+###======================================================
+### PRACTICA FINAL
+### =========================================================
+POST http://localhost:3000/api/client
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Construcciones Garcia SL",
+  "cif": "B12345678",
+  "email": "cliente@garcia.com",
+  "phone": "600123123",
+  "address": {
+    "street": "Calle Mayor",
+    "number": "12",
+    "postal": "28001",
+    "city": "Madrid",
+    "province": "Madrid"
+  }
+}
+###
+GET http://localhost:3000/api/client
+Authorization: Bearer {{accessToken}}
+
+###
+GET http://localhost:3000/api/client?page=1&limit=5&name=garcia&sort=-createdAt
+Authorization: Bearer {{accessToken}}
+
+###
+GET http://localhost:3000/api/client/{{clientId}}
+Authorization: Bearer {{accessToken}}
+
+###
+PUT http://localhost:3000/api/client/{{clientId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Construcciones Garcia Renovadas SL",
+  "phone": "611222333"
+}
+
+###
+DELETE http://localhost:3000/api/client/{{clientId}}?soft=true
+Authorization: Bearer {{accessToken}}
+
+###
+GET http://localhost:3000/api/client/archived
+Authorization: Bearer {{accessToken}}
+
+###
+PATCH http://localhost:3000/api/client/{{clientId}}/restore
+Authorization: Bearer {{accessToken}}
+
+###
+DELETE http://localhost:3000/api/client/{{clientId}}
+Authorization: Bearer {{accessToken}}
+###
+POST http://localhost:3000/api/project
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Reforma Oficina Central",
+  "projectCode": "REF-001",
+  "client": "{{clientId}}",
+  "email": "obra@cliente.com",
+  "notes": "Proyecto prioritario",
+  "address": {
+    "street": "Gran Via",
+    "number": "45",
+    "postal": "28013",
+    "city": "Madrid",
+    "province": "Madrid"
+  }
+}
+###
+GET http://localhost:3000/api/project
+Authorization: Bearer {{accessToken}}
+###
+GET http://localhost:3000/api/project?page=1&limit=5&name=reforma&active=true&sort=-createdAt
+Authorization: Bearer {{accessToken}}
+###
+GET http://localhost:3000/api/project?client={{clientId}}
+Authorization: Bearer {{accessToken}}
+###
+GET http://localhost:3000/api/project/{{projectId}}
+Authorization: Bearer {{accessToken}}
+###
+PUT http://localhost:3000/api/project/{{projectId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Reforma Oficina Central Norte",
+  "active": false,
+  "notes": "Proyecto pausado temporalmente"
+}
+###
+DELETE http://localhost:3000/api/project/{{projectId}}?soft=true
+Authorization: Bearer {{accessToken}}
+###
+GET http://localhost:3000/api/project/archived
+Authorization: Bearer {{accessToken}}
+###
+PATCH http://localhost:3000/api/project/{{projectId}}/restore
+Authorization: Bearer {{accessToken}}
+###
+DELETE http://localhost:3000/api/project/{{projectId}}
+Authorization: Bearer {{accessToken}}
+###
+GET http://localhost:3000/api/project/test

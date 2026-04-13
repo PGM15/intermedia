@@ -6,6 +6,8 @@ import morgan from "morgan";
 import cors from "cors";
 import errorMiddleware from "./middleware/error.middleware.js";
 import userRoutes from "./routes/user.routes.js";
+import clientRoutes from "./routes/client.routes.js";
+import projectRoutes from "./routes/project.routes.js"
 
 
 const app = express();
@@ -32,6 +34,9 @@ app.get("/api/health", (req, res) => {
 
 app.use("/uploads", express.static("src/uploads"));
 app.use("/api/user", userRoutes);
+app.use("/api/client", clientRoutes);
+console.log(">>> mounting /api/project");
+app.use("/api/project", projectRoutes);
 
 app.use(errorMiddleware);
 
