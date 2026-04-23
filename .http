@@ -4,6 +4,7 @@
 @verificationCode = 780234
 @clientId = 69dcbe1345e02cf24539d4e3
 @projectId = 69dcc6e327bd272daa751382
+@deliveryNoteId = MI_DELIVERY_NOTE
 
 ### Health check
 GET {{baseUrl}}/api/health
@@ -345,3 +346,79 @@ DELETE http://localhost:3000/api/project/{{projectId}}
 Authorization: Bearer {{accessToken}}
 ###
 GET http://localhost:3000/api/project/test
+### CREO ALBARAN DE MATERIAL
+POST http://localhost:3000/api/deliverynote
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "client": "{{clientId}}",
+  "project": "{{projectId}}",
+  "format": "material",
+  "description": "Entrega de materiales de obra",
+  "workDate": "2026-04-13",
+  "material": "Cemento",
+  "quantity": 25,
+  "unit": "sacos"
+}
+### CREO ALBARÁN DE HORAS
+POST http://localhost:3000/api/deliverynote
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "client": "{{clientId}}",
+  "project": "{{projectId}}",
+  "format": "hours",
+  "description": "Jornada de trabajo en obra",
+  "workDate": "2026-04-13",
+  "hours": 8,
+  "workers": [
+    {
+      "name": "Juan",
+      "hours": 4
+    },
+    {
+      "name": "Pedro",
+      "hours": 4
+    }
+  ]
+}
+### LISTAR
+GET http://localhost:3000/api/deliverynote
+Authorization: Bearer {{accessToken}}
+### FILTRAR
+GET http://localhost:3000/api/deliverynote?page=1&limit=5&format=hours&signed=false&sort=-workDate
+Authorization: Bearer {{accessToken}}
+### FILTRO POR PROYECTO
+GET http://localhost:3000/api/deliverynote?project={{projectId}}
+Authorization: Bearer {{accessToken}}
+### FILTRO POR CLIENTE
+GET http://localhost:3000/api/deliverynote?client={{clientId}}
+Authorization: Bearer {{accessToken}}
+### FILTRO POR FECHA
+GET http://localhost:3000/api/deliverynote?from=2026-01-01&to=2026-12-31
+Authorization: Bearer {{accessToken}}
+### OBTENER UNO
+GET http://localhost:3000/api/deliverynote/{{deliveryNoteId}}
+Authorization: Bearer {{accessToken}}
+### BORRAR
+DELETE http://localhost:3000/api/deliverynote/{{deliveryNoteId}}
+Authorization: Bearer {{accessToken}}
+### FIRMAR ALBARÁN
+PATCH http://localhost:3000/api/deliverynote/{{deliveryNoteId}}/sign
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="signature"; filename="firma.png"
+Content-Type: image/png
+
+< ./firma.png
+--WebAppBoundary--
+### DESCARGAR PDF
+GET http://localhost:3000/api/deliverynote/pdf/{{deliveryNoteId}}
+Authorization: Bearer {{accessToken}}
+### INTENTAR BORRAR FIRMADO --> DEBE FALLAR
+DELETE http://localhost:3000/api/deliverynote/{{deliveryNoteId}}
+Authorization: Bearer {{accessToken}}

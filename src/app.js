@@ -8,6 +8,8 @@ import errorMiddleware from "./middleware/error.middleware.js";
 import userRoutes from "./routes/user.routes.js";
 import clientRoutes from "./routes/client.routes.js";
 import projectRoutes from "./routes/project.routes.js"
+import deliveryNoteRoutes from "./routes/deliverynote.routes.js"
+import { swaggerUi, swaggerSpec } from "./config/swagger.js";
 
 
 const app = express();
@@ -24,7 +26,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
 
-
+/**
+ * @swagger
+ * /api/health:
+ *   get:
+ *     summary: Health check del servidor
+ *     tags: [Health]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: API funcionando
+ */
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     ok: true,
@@ -37,6 +49,8 @@ app.use("/api/user", userRoutes);
 app.use("/api/client", clientRoutes);
 console.log(">>> mounting /api/project");
 app.use("/api/project", projectRoutes);
+app.use("/api/deliverynote", deliveryNoteRoutes);
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(errorMiddleware);
 
