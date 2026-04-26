@@ -5,6 +5,7 @@ import AppError from "../utils/appError.js";
 import sharp from "sharp";
 import { generateDeliveryNotePdfBuffer } from "../services/pdf.service.js";
 import { uploadImageBuffer, uploadPdfBuffer } from "../services/storage.service.js";
+import { sendSlackNotification } from "../services/slack.service.js";
 
 export const createDeliveryNote = async (req, res, next) => {
   try {
@@ -72,6 +73,26 @@ export const createDeliveryNote = async (req, res, next) => {
       workDate: new Date(req.body.workDate),
     });
 
+    
+    const io = req.app.get("io");
+    io.emit("deliverynote:created", {
+      message: "Nuevo albarán creado",
+      deliveryNote,
+    });
+
+    await sendSlackNotification({
+      text: "Nuevo albarán creado",
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*Nuevo albarán creado*\nCliente: ${client.name}\nProyecto: ${project.name}\nFormato: ${deliveryNote.format}`,
+          },
+        },
+      ],
+    });
+
     res.status(201).json({
       status: "success",
       message: "Delivery note created successfully",
@@ -97,21 +118,10 @@ export const getDeliveryNotes = async (req, res, next) => {
       deleted: false,
     };
 
-    if (project) {
-      filter.project = project;
-    }
-
-    if (client) {
-      filter.client = client;
-    }
-
-    if (format) {
-      filter.format = format;
-    }
-
-    if (signed !== undefined) {
-      filter.signed = signed === "true";
-    }
+    if (project) filter.project = project;
+    if (client) filter.client = client;
+    if (format) filter.format = format;
+    if (signed !== undefined) filter.signed = signed === "true";
 
     if (from || to) {
       filter.workDate = {};
@@ -255,6 +265,25 @@ export const signDeliveryNote = async (req, res, next) => {
     deliveryNote.pdfUrl = uploadedPdf.url;
 
     await deliveryNote.save();
+
+    
+    const io = req.app.get("io");
+    io.emit("deliverynote:signed", {
+      message: "Albarán firmado",
+      deliveryNote,
+    });
+    await sendSlackNotification({
+      text: "Albarán firmado",
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*Albarán firmado*\nID: ${deliveryNote._id}\nCliente: ${deliveryNote.client.name}\nProyecto: ${deliveryNote.project.name}`,
+          },
+        },
+      ],
+    });
 
     res.status(200).json({
       status: "success",
