@@ -160,9 +160,46 @@ const options = {
       },
     ],
   },
-  apis: ["./src/routes/*.js"],
+  apis: ["./src/app.js", "./src/routes/*.js"],
 };
 
 const swaggerSpec = swaggerJsdoc(options);
+
+const errorResponseContent = {
+  "application/json": {
+    schema: {
+      $ref: "#/components/schemas/ErrorResponse",
+    },
+  },
+};
+
+for (const pathItem of Object.values(swaggerSpec.paths)) {
+  for (const [method, operation] of Object.entries(pathItem)) {
+    if (!["get", "post", "put", "patch", "delete"].includes(method)) {
+      continue;
+    }
+
+    operation.responses ||= {};
+
+    if (operation.security !== false && operation.security?.length !== 0) {
+      operation.responses["401"] ||= {
+        description: "No autorizado o token inválido",
+        content: errorResponseContent,
+      };
+    }
+
+    if (operation.requestBody || operation.parameters?.length) {
+      operation.responses["400"] ||= {
+        description: "Solicitud inválida",
+        content: errorResponseContent,
+      };
+    }
+
+    operation.responses["500"] ||= {
+      description: "Error interno del servidor",
+      content: errorResponseContent,
+    };
+  }
+}
 
 export { swaggerUi, swaggerSpec };

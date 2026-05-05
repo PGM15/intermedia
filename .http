@@ -1,29 +1,27 @@
 @baseUrl = http://localhost:3000
-@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Y2E5NGMyOGQzOTExY2FiM2I5YjFmOCIsImlhdCI6MTc3NjA3NjQ5MywiZXhwIjoxNzc2MDc3MzkzfQ.JhHa5Peozf4oxgVM1g7xuwRGWyq80QYrmGTd3Cq9qvs
-@refreshToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5Y2E5NGMyOGQzOTExY2FiM2I5YjFmOCIsImlhdCI6MTc3NjA3NjQ2MSwiZXhwIjoxNzc2NjgxMjYxfQ.JcyXReUgzHtsEwC8kQAIxuk6SH4PzOUaSmomrRsQ7d8
-@verificationCode = 780234
-@clientId = 69dcbe1345e02cf24539d4e3
-@projectId = 69dcc6e327bd272daa751382
-@deliveryNoteId = MI_DELIVERY_NOTE
+@accessToken = PEGA_AQUI_ACCESS_TOKEN
+@refreshToken = PEGA_AQUI_REFRESH_TOKEN
+@verificationCode = PEGA_AQUI_CODIGO_EMAIL
+@clientId = PEGA_AQUI_CLIENT_ID
+@projectId = PEGA_AQUI_PROJECT_ID
+@deliveryNoteId = PEGA_AQUI_DELIVERYNOTE_ID
 
-### Health check
-GET {{baseUrl}}/api/health
+### Health
+GET {{baseUrl}}/health
 
-### ------------------------------------------------------------
-### 1) REGISTER
-### Crea un usuario nuevo
-### ------------------------------------------------------------
+### Swagger
+GET {{baseUrl}}/api-docs
+
+### Register
 POST {{baseUrl}}/api/user/register
 Content-Type: application/json
 
 {
-  "email": "cjb6@test.com",
-  "password": "123456"
+  "email": "demo@test.com",
+  "password": "12345678"
 }
 
-### ------------------------------------------------------------
-### 2) VALIDATION
-### ------------------------------------------------------------
+### Validate user
 PUT {{baseUrl}}/api/user/validation
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
@@ -32,74 +30,33 @@ Content-Type: application/json
   "code": "{{verificationCode}}"
 }
 
-### ------------------------------------------------------------
-### 3) LOGIN
-### Solo funciona si el usuario ya está validado
-### IMPORTANTE:
-### - copia el accessToken de la respuesta en @accessToken
-### - copia el refreshToken de la respuesta en @refreshToken
-### ------------------------------------------------------------
+### Login
 POST {{baseUrl}}/api/user/login
 Content-Type: application/json
 
 {
-  "email": "cjb6@test.com",
-  "password": "123456"
+  "email": "demo@test.com",
+  "password": "12345678"
 }
 
-### ------------------------------------------------------------
-### 4) GET CURRENT USER
-### Devuelve el usuario autenticado
-### ------------------------------------------------------------
-GET {{baseUrl}}/api/user
-Authorization: Bearer {{accessToken}}
-
-### ------------------------------------------------------------
-### 5) COMPLETE PROFILE / ONBOARDING PERSONAL
-### PUT /api/user/register
-### Completa datos personales del usuario
-### ------------------------------------------------------------
+### Complete profile
 PUT {{baseUrl}}/api/user/register
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
   "name": "Pablo",
-  "lastName": "González Mediavilla",
+  "lastName": "Gonzalez",
   "nif": "12345678Z",
   "address": {
     "street": "Calle Mayor 12",
     "city": "Madrid",
     "postalCode": "28001",
-    "country": "España"
+    "country": "Espana"
   }
 }
 
-### ------------------------------------------------------------
-### 6) ASSIGN COMPANY - EMPRESA NUEVA
-### Si el CIF no existe, crea la company y deja al usuario como admin
-### ------------------------------------------------------------
-PATCH {{baseUrl}}/api/user/company
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "isFreelance": false,
-  "name": "Mi Empresa SL",
-  "cif": "B1345678",
-  "address": {
-    "street": "Gran Via 20",
-    "city": "Madrid",
-    "postalCode": "28013",
-    "country": "España"
-  }
-}
-
-### ------------------------------------------------------------
-### 7) ASSIGN COMPANY - UNIRSE A EMPRESA EXISTENTE
-### Usa otro usuario distinto pero el mismo CIF
-### Ese usuario debería quedar como guest
-### ------------------------------------------------------------
+### Create or join company
 PATCH {{baseUrl}}/api/user/company
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
@@ -112,37 +69,28 @@ Content-Type: application/json
     "street": "Gran Via 20",
     "city": "Madrid",
     "postalCode": "28013",
-    "country": "España"
+    "country": "Espana"
   }
 }
 
-### ------------------------------------------------------------
-### 8) ASSIGN COMPANY - AUTÓNOMO
-### Requiere haber completado antes el perfil personal
-### ------------------------------------------------------------
-PATCH {{baseUrl}}/api/user/company
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "isFreelance": true
-}
-
-### ------------------------------------------------------------
-### 9) GET CURRENT USER OTRA VEZ
-### ------------------------------------------------------------
+### Get me
 GET {{baseUrl}}/api/user
 Authorization: Bearer {{accessToken}}
 
-### -----------------------------
-### 10) Subir un logo de la empresa
-### Probarlo mejor en Postman - Esta en la carpeta Postman en la raiz del proyecto
-### ------------------------------
+### Upload company logo
+### Cambia ./logo.png por una imagen local de logo
+PATCH {{baseUrl}}/api/user/logo
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
 
-### ------------------------------------------------------------
-### 11) REFRESH SESSION
-### Envía el refresh token y debe devolver un nuevo accessToken
-### ------------------------------------------------------------
+--WebAppBoundary
+Content-Disposition: form-data; name="logo"; filename="logo.png"
+Content-Type: image/png
+
+< ./logo.png
+--WebAppBoundary--
+
+### Refresh token
 POST {{baseUrl}}/api/user/refresh
 Content-Type: application/json
 
@@ -150,100 +98,14 @@ Content-Type: application/json
   "refreshToken": "{{refreshToken}}"
 }
 
-### ------------------------------------------------------------
-### 12) LOGOUT
-### Requiere access token + refresh token
-### Debe invalidar el refresh token guardado
-### ------------------------------------------------------------
-POST {{baseUrl}}/api/user/logout
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "refreshToken": "{{refreshToken}}"
-}
-
-### ------------------------------------------------------------
-### 13) REFRESH DESPUÉS DE LOGOUT
-### Debe fallar con 401 porque el refresh token ya no es válido
-### ------------------------------------------------------------
-POST {{baseUrl}}/api/user/refresh
-Content-Type: application/json
-
-{
-  "refreshToken": "{{refreshToken}}"
-}
-### ------------------------------------------------------------
-### 14) DELETE USER - SOFT DELETE
-### Debe marcar deleted=true y anular refreshToken
-### ------------------------------------------------------------
-DELETE {{baseUrl}}/api/user?soft=true
-Authorization: Bearer {{accessToken}}
-### ------------------------------------------------------------
-### 15) DELETE USER - HARD DELETE
-### Debe borrar el documento físicamente
-### ------------------------------------------------------------
-DELETE {{baseUrl}}/api/user
-Authorization: Bearer {{accessToken}}
-### ------------------------------------------------------------
-### 16) INVITE USER
-### Solo admin puede invitar
-### Crea un usuario guest en la misma company del admin
-### ------------------------------------------------------------
-POST {{baseUrl}}/api/user/invite
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "email": "invitado1@test.com",
-  "password": "12345678"
-}
-### ------------------------------------------------------------
-### 17) CHANGE PASSWORD
-### Requiere JWT
-### La nueva contraseña debe ser distinta de la actual
-### ------------------------------------------------------------
-PUT {{baseUrl}}/api/user/password
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "currentPassword": "12345678",
-  "newPassword": "123456789"
-}
-### ------------------------------------------------------------
-### 18) LOGIN CON NUEVA CONTRASEÑA
-### Debe funcionar con la nueva contraseña
-### ------------------------------------------------------------
-POST {{baseUrl}}/api/user/login
-Content-Type: application/json
-
-{
-  "email": "invitado1@test.com",
-  "password": "123456789"
-}
-### ------------------------------------------------------------
-### 19) CHANGE PASSWORD - ERROR MISMA CONTRASEÑA
-### Debe fallar por el refine de Zod
-### ------------------------------------------------------------
-PUT {{baseUrl}}/api/user/password
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "currentPassword": "123456789",
-  "newPassword": "123456789"
-}
-###======================================================
-### PRACTICA FINAL
-### =========================================================
-POST http://localhost:3000/api/client
+### Create client
+POST {{baseUrl}}/api/client
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
   "name": "Construcciones Garcia SL",
-  "cif": "B12345678",
+  "cif": "B87654321",
   "email": "cliente@garcia.com",
   "phone": "600123123",
   "address": {
@@ -254,45 +116,38 @@ Content-Type: application/json
     "province": "Madrid"
   }
 }
-###
-GET http://localhost:3000/api/client
+
+### List clients with pagination/filter
+GET {{baseUrl}}/api/client?page=1&limit=10&name=garcia&sort=-createdAt
 Authorization: Bearer {{accessToken}}
 
-###
-GET http://localhost:3000/api/client?page=1&limit=5&name=garcia&sort=-createdAt
+### Get client
+GET {{baseUrl}}/api/client/{{clientId}}
 Authorization: Bearer {{accessToken}}
 
-###
-GET http://localhost:3000/api/client/{{clientId}}
-Authorization: Bearer {{accessToken}}
-
-###
-PUT http://localhost:3000/api/client/{{clientId}}
+### Update client
+PUT {{baseUrl}}/api/client/{{clientId}}
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
-  "name": "Construcciones Garcia Renovadas SL",
   "phone": "611222333"
 }
 
-###
-DELETE http://localhost:3000/api/client/{{clientId}}?soft=true
+### Archive client
+DELETE {{baseUrl}}/api/client/{{clientId}}?soft=true
 Authorization: Bearer {{accessToken}}
 
-###
-GET http://localhost:3000/api/client/archived
+### List archived clients
+GET {{baseUrl}}/api/client/archived
 Authorization: Bearer {{accessToken}}
 
-###
-PATCH http://localhost:3000/api/client/{{clientId}}/restore
+### Restore client
+PATCH {{baseUrl}}/api/client/{{clientId}}/restore
 Authorization: Bearer {{accessToken}}
 
-###
-DELETE http://localhost:3000/api/client/{{clientId}}
-Authorization: Bearer {{accessToken}}
-###
-POST http://localhost:3000/api/project
+### Create project
+POST {{baseUrl}}/api/project
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
@@ -303,51 +158,46 @@ Content-Type: application/json
   "email": "obra@cliente.com",
   "notes": "Proyecto prioritario",
   "address": {
-    "street": "Gran Via",
-    "number": "45",
-    "postal": "28013",
+    "street": "Calle Obra",
+    "number": "4",
+    "postal": "28002",
     "city": "Madrid",
     "province": "Madrid"
   }
 }
-###
-GET http://localhost:3000/api/project
+
+### List projects with filters
+GET {{baseUrl}}/api/project?page=1&limit=10&client={{clientId}}&active=true&sort=-createdAt
 Authorization: Bearer {{accessToken}}
-###
-GET http://localhost:3000/api/project?page=1&limit=5&name=reforma&active=true&sort=-createdAt
+
+### Get project
+GET {{baseUrl}}/api/project/{{projectId}}
 Authorization: Bearer {{accessToken}}
-###
-GET http://localhost:3000/api/project?client={{clientId}}
-Authorization: Bearer {{accessToken}}
-###
-GET http://localhost:3000/api/project/{{projectId}}
-Authorization: Bearer {{accessToken}}
-###
-PUT http://localhost:3000/api/project/{{projectId}}
+
+### Update project
+PUT {{baseUrl}}/api/project/{{projectId}}
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
-  "name": "Reforma Oficina Central Norte",
-  "active": false,
-  "notes": "Proyecto pausado temporalmente"
+  "notes": "Notas actualizadas",
+  "active": true
 }
-###
-DELETE http://localhost:3000/api/project/{{projectId}}?soft=true
+
+### Archive project
+DELETE {{baseUrl}}/api/project/{{projectId}}?soft=true
 Authorization: Bearer {{accessToken}}
-###
-GET http://localhost:3000/api/project/archived
+
+### List archived projects
+GET {{baseUrl}}/api/project/archived
 Authorization: Bearer {{accessToken}}
-###
-PATCH http://localhost:3000/api/project/{{projectId}}/restore
+
+### Restore project
+PATCH {{baseUrl}}/api/project/{{projectId}}/restore
 Authorization: Bearer {{accessToken}}
-###
-DELETE http://localhost:3000/api/project/{{projectId}}
-Authorization: Bearer {{accessToken}}
-###
-GET http://localhost:3000/api/project/test
-### CREO ALBARAN DE MATERIAL
-POST http://localhost:3000/api/deliverynote
+
+### Create material delivery note
+POST {{baseUrl}}/api/deliverynote
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
@@ -355,14 +205,15 @@ Content-Type: application/json
   "client": "{{clientId}}",
   "project": "{{projectId}}",
   "format": "material",
-  "description": "Entrega de materiales de obra",
+  "description": "Entrega de materiales",
   "workDate": "2026-04-13",
   "material": "Cemento",
   "quantity": 25,
   "unit": "sacos"
 }
-### CREO ALBARÁN DE HORAS
-POST http://localhost:3000/api/deliverynote
+
+### Create hours delivery note
+POST {{baseUrl}}/api/deliverynote
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
@@ -370,55 +221,49 @@ Content-Type: application/json
   "client": "{{clientId}}",
   "project": "{{projectId}}",
   "format": "hours",
-  "description": "Jornada de trabajo en obra",
-  "workDate": "2026-04-13",
+  "description": "Trabajo realizado",
+  "workDate": "2026-04-14",
   "hours": 8,
   "workers": [
-    {
-      "name": "Juan",
-      "hours": 4
-    },
-    {
-      "name": "Pedro",
-      "hours": 4
-    }
+    { "name": "Ana", "hours": 4 },
+    { "name": "Luis", "hours": 4 }
   ]
 }
-### LISTAR
-GET http://localhost:3000/api/deliverynote
+
+### List delivery notes with filters
+GET {{baseUrl}}/api/deliverynote?page=1&limit=10&project={{projectId}}&client={{clientId}}&format=hours&signed=false&from=2026-01-01&to=2026-12-31&sort=-workDate
 Authorization: Bearer {{accessToken}}
-### FILTRAR
-GET http://localhost:3000/api/deliverynote?page=1&limit=5&format=hours&signed=false&sort=-workDate
+
+### Get delivery note
+GET {{baseUrl}}/api/deliverynote/{{deliveryNoteId}}
 Authorization: Bearer {{accessToken}}
-### FILTRO POR PROYECTO
-GET http://localhost:3000/api/deliverynote?project={{projectId}}
+
+### Download or get PDF URL
+GET {{baseUrl}}/api/deliverynote/pdf/{{deliveryNoteId}}
 Authorization: Bearer {{accessToken}}
-### FILTRO POR CLIENTE
-GET http://localhost:3000/api/deliverynote?client={{clientId}}
-Authorization: Bearer {{accessToken}}
-### FILTRO POR FECHA
-GET http://localhost:3000/api/deliverynote?from=2026-01-01&to=2026-12-31
-Authorization: Bearer {{accessToken}}
-### OBTENER UNO
-GET http://localhost:3000/api/deliverynote/{{deliveryNoteId}}
-Authorization: Bearer {{accessToken}}
-### BORRAR
-DELETE http://localhost:3000/api/deliverynote/{{deliveryNoteId}}
-Authorization: Bearer {{accessToken}}
-### FIRMAR ALBARÁN
-PATCH http://localhost:3000/api/deliverynote/{{deliveryNoteId}}/sign
+
+### Sign delivery note
+### Cambia ./signature.png por una imagen local de firma
+PATCH {{baseUrl}}/api/deliverynote/{{deliveryNoteId}}/sign
 Authorization: Bearer {{accessToken}}
 Content-Type: multipart/form-data; boundary=WebAppBoundary
 
 --WebAppBoundary
-Content-Disposition: form-data; name="signature"; filename="firma.png"
+Content-Disposition: form-data; name="signature"; filename="signature.png"
 Content-Type: image/png
 
-< ./firma.png
+< ./signature.png
 --WebAppBoundary--
-### DESCARGAR PDF
-GET http://localhost:3000/api/deliverynote/pdf/{{deliveryNoteId}}
+
+### Delete unsigned delivery note
+DELETE {{baseUrl}}/api/deliverynote/{{deliveryNoteId}}
 Authorization: Bearer {{accessToken}}
-### INTENTAR BORRAR FIRMADO --> DEBE FALLAR
-DELETE http://localhost:3000/api/deliverynote/{{deliveryNoteId}}
+
+### Logout
+POST {{baseUrl}}/api/user/logout
 Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}

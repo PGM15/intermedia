@@ -1,7 +1,9 @@
+import "dotenv/config";
 import http from "http";
-import { Server } from "socket.io";
+import mongoose from "mongoose";
 import app from "./app.js";
 import {connectDB} from "./config/db.js";
+import { configureSocket } from "./config/socket.js";
 
 const PORT = process.env.PORT || 3000;
 
@@ -9,34 +11,22 @@ await connectDB();
 
 const server = http.createServer(app);
 
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST", "PATCH", "DELETE"],
-  },
-});
-
-io.on("connection", (socket) => {
-  console.log("Cliente conectado:", socket.id);
-
-  socket.on("getWelcome", () => {
-    console.log("Evento getWelcome recibido");
-
-    socket.emit("welcome", {
-      message: "Conectado correctamente al WebSocket",
-      socketId: socket.id,
-    });
-
-    console.log("Welcome enviado");
-  });
-
-  socket.on("disconnect", () => {
-    console.log("Cliente desconectado:", socket.id);
-  });
-});
-
-app.set("io", io);
+const io = configureSocket(server, app);
 
 server.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
+
+const shutdown = async (signal) => {
+  console.log(`${signal} recibido. Cerrando servidor...`);
+
+  io.close();
+
+  server.close(async () => {
+    await mongoose.connection.close();
+    process.exit(0);
+  });
+};
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

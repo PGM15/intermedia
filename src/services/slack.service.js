@@ -19,3 +19,27 @@ export const sendSlackNotification = async ({ text, blocks }) => {
     console.error("Slack notification error:", error.message);
   }
 };
+
+export const sendSlackError = async ({ err, req }) => {
+  const stack = err.stack ? err.stack.slice(0, 1500) : "Sin stack";
+
+  await sendSlackNotification({
+    text: `Error 5XX en ${req.method} ${req.originalUrl}`,
+    blocks: [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: [
+            "*Error 5XX HTTP*",
+            `*Timestamp:* ${new Date().toISOString()}`,
+            `*Ruta:* ${req.originalUrl}`,
+            `*Método:* ${req.method}`,
+            `*Mensaje:* ${err.message || "Error interno del servidor"}`,
+            `*Stack:* \`\`\`${stack}\`\`\``,
+          ].join("\n"),
+        },
+      },
+    ],
+  });
+};

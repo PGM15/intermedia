@@ -1,8 +1,6 @@
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 import AppError from "../utils/appError.js";
-import catchAsync from "../utils/catchAsync.js";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -11,22 +9,24 @@ import {
 import { generateVerificationCode } from "../utils/generateVerificationCode.js";
 import Company from "../models/company.model.js";
 import notificationEmitter from "../services/notification.service.js";
+import { sendVerificationEmail } from "../services/mail.services.js";
+import sharp from "sharp";
+import { uploadImageBuffer } from "../services/storage.service.js";
 
 
 
-export const registerUser = catchAsync(async (req, res) => {
+export const registerUser = async (req, res) => {
   const { email, password } = req.body;
 
   const existingUser = await User.findOne({ email });
 
   if (existingUser && existingUser.status === "active") {
-    throw new AppError("Ya existe un usuario registrado con ese email", 409);
+    throw AppError.conflict("Ya existe un usuario registrado con ese email");
   }
 
   if (existingUser && existingUser.status === "pending") {
-    throw new AppError(
-      "Ya existe un usuario pendiente de validación con ese email",
-      409
+    throw AppError.conflict(
+      "Ya existe un usuario pendiente de validación con ese email"
     );
   }
 
@@ -48,6 +48,11 @@ export const registerUser = catchAsync(async (req, res) => {
   user.refreshToken = refreshToken;
   await user.save();
 
+  await sendVerificationEmail({
+    to: user.email,
+    code: verificationCode,
+  });
+
   notificationEmitter.emit("user.registered", user);
 
   res.status(201).json({
@@ -64,31 +69,30 @@ export const registerUser = catchAsync(async (req, res) => {
       verificationCode,
     },
   });
-});
+};
 
-export const validateUser = catchAsync(async (req, res) => {
+export const validateUser = async (req, res) => {
   const { code } = req.body || {};
   const user = req.user;
 
   if (!code) {
-    throw new AppError("Debes enviar el código de verificación", 400);
+    throw AppError.badRequest("Debes enviar el código de verificación");
   }
 
   if (user.status === "active") {
-    throw new AppError("El usuario ya está validado", 400);
+    throw AppError.badRequest("El usuario ya está validado");
   }
 
   if (user.verificationAttempts <= 0) {
-    throw new AppError("Has superado el número máximo de intentos", 429);
+    throw AppError.tooManyRequests("Has superado el número máximo de intentos");
   }
 
   if (user.verificationCode !== code) {
     user.verificationAttempts -= 1;
     await user.save();
 
-    throw new AppError(
-      `Código incorrecto. Intentos restantes: ${user.verificationAttempts}`,
-      400
+    throw AppError.badRequest(
+      `Código incorrecto. Intentos restantes: ${user.verificationAttempts}`
     );
   }
 
@@ -103,26 +107,26 @@ export const validateUser = catchAsync(async (req, res) => {
     ok: true,
     message: "Usuario validado correctamente",
   });
-});
+};
 
 // Controlador para el login de usuarios
-export const loginUser = catchAsync(async (req, res) => {
+export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   const user = await User.findOne({ email, deleted: false });
 
   if (!user) {
-    throw new AppError("Credenciales incorrectas", 401);
+    throw AppError.unauthorized("Credenciales incorrectas");
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
 
   if (!isMatch) {
-    throw new AppError("Credenciales incorrectas", 401);
+    throw AppError.unauthorized("Credenciales incorrectas");
   }
 
   if (user.status !== "active") {
-    throw new AppError("Debes validar tu cuenta antes de iniciar sesión", 401);
+    throw AppError.unauthorized("Debes validar tu cuenta antes de iniciar sesión");
   }
 
   const accessToken = generateAccessToken(user._id);
@@ -148,28 +152,22 @@ export const loginUser = catchAsync(async (req, res) => {
       refreshToken,
     },
   });
-});
+};
 
 // Controlador para refrescar sesión
-export const refreshSession = catchAsync(async (req, res) => {
+export const refreshSession = async (req, res) => {
   const { refreshToken } = req.body;
 
-  let decoded;
-
-  try {
-    decoded = verifyRefreshToken(refreshToken);
-  } catch (error) {
-    throw new AppError("Refresh token inválido o expirado", 401);
-  }
+  const decoded = verifyRefreshToken(refreshToken);
 
   const user = await User.findById(decoded.id);
 
   if (!user || user.deleted) {
-    throw new AppError("Usuario no encontrado", 401);
+    throw AppError.unauthorized("Usuario no encontrado");
   }
 
   if (!user.refreshToken || user.refreshToken !== refreshToken) {
-    throw new AppError("Refresh token inválido", 401);
+    throw AppError.unauthorized("Refresh token inválido");
   }
 
   const newAccessToken = generateAccessToken(user._id);
@@ -181,20 +179,20 @@ export const refreshSession = catchAsync(async (req, res) => {
       accessToken: newAccessToken,
     },
   });
-});
+};
 
 // Controlador para cerrar sesión
-export const logoutUser = catchAsync(async (req, res) => {
+export const logoutUser = async (req, res) => {
   const { refreshToken } = req.body;
 
   const user = await User.findById(req.user._id);
 
   if (!user || user.deleted) {
-    throw new AppError("Usuario no encontrado", 404);
+    throw AppError.notFound("Usuario no encontrado");
   }
 
   if (!user.refreshToken || user.refreshToken !== refreshToken) {
-    throw new AppError("Refresh token inválido", 401);
+    throw AppError.unauthorized("Refresh token inválido");
   }
 
   user.refreshToken = null;
@@ -204,31 +202,30 @@ export const logoutUser = catchAsync(async (req, res) => {
     ok: true,
     message: "Logout correcto",
   });
-});
+};
 
 // Controlador para el GET
-export const getMe = catchAsync(async (req, res) => {
+export const getMe = async (req, res) => {
   const user = await User.findById(req.user._id)
     .populate("company")
     .select("-password -refreshToken -verificationCode -verificationAttempts");
 
   if (!user) {
-    throw new AppError("Usuario no encontrado", 404);
+    throw AppError.notFound("Usuario no encontrado");
   }
 
   res.status(200).json({
     ok: true,
     data: { user },
   });
-});
+};
 
-export const completeProfile = catchAsync(async (req, res) => {
+export const completeProfile = async (req, res) => {
   const { name, lastName, nif, address } = req.body;
 
   if (req.user.status !== "active") {
-    throw new AppError(
-      "Debes validar tu cuenta antes de completar el perfil",
-      401
+    throw AppError.unauthorized(
+      "Debes validar tu cuenta antes de completar el perfil"
     );
   }
 
@@ -239,7 +236,7 @@ export const completeProfile = catchAsync(async (req, res) => {
   ).select("-password -refreshToken -verificationCode -verificationAttempts");
 
   if (!updatedUser) {
-    throw new AppError("Usuario no encontrado", 404);
+    throw AppError.notFound("Usuario no encontrado");
   }
 
   res.status(200).json({
@@ -247,19 +244,18 @@ export const completeProfile = catchAsync(async (req, res) => {
     message: "Datos personales actualizados correctamente",
     data: { user: updatedUser },
   });
-});
+};
 
-export const assignCompany = catchAsync(async (req, res) => {
+export const assignCompany = async (req, res) => {
   const user = await User.findById(req.user._id);
 
   if (!user || user.deleted) {
-    throw new AppError("Usuario no encontrado", 404);
+    throw AppError.notFound("Usuario no encontrado");
   }
 
   if (user.status !== "active") {
-    throw new AppError(
-      "Debes validar tu cuenta antes de asociar una empresa",
-      401
+    throw AppError.unauthorized(
+      "Debes validar tu cuenta antes de asociar una empresa"
     );
   }
 
@@ -268,9 +264,8 @@ export const assignCompany = catchAsync(async (req, res) => {
 
   if (isFreelance) {
     if (!user.nif) {
-      throw new AppError(
-        "Debes completar tu perfil antes de darte de alta como autónomo",
-        400
+      throw AppError.badRequest(
+        "Debes completar tu perfil antes de darte de alta como autónomo"
       );
     }
 
@@ -313,6 +308,16 @@ export const assignCompany = catchAsync(async (req, res) => {
     });
     user.company = company._id;
     user.role = "admin";
+  } else if (
+    company.owner.toString() === user._id.toString() ||
+    (user.company?.toString() === company._id.toString() && user.role === "admin")
+  ) {
+    company.name = name || company.name;
+    company.address = address || company.address;
+    await company.save();
+
+    user.company = company._id;
+    user.role = "admin";
   } else {
     user.company = company._id;
     user.role = "guest";
@@ -329,31 +334,41 @@ export const assignCompany = catchAsync(async (req, res) => {
     message: "Empresa asignada correctamente",
     data: { user: populatedUser },
   });
-});
+};
 
 // Controlador para subir el logo de la empresa
-export const uploadCompanyLogo = catchAsync(async (req, res) => {
+export const uploadCompanyLogo = async (req, res) => {
   const user = await User.findById(req.user._id);
 
   if (!user || user.deleted) {
-    throw new AppError("Usuario no encontrado", 404);
+    throw AppError.notFound("Usuario no encontrado");
   }
 
   if (!user.company) {
-    throw new AppError("El usuario no tiene ninguna empresa asociada", 400);
+    throw AppError.badRequest("El usuario no tiene ninguna empresa asociada");
   }
 
   if (!req.file) {
-    throw new AppError("Debes subir un archivo de imagen", 400);
+    throw AppError.badRequest("Debes subir un archivo de imagen");
   }
 
   const company = await Company.findById(user.company);
 
   if (!company || company.deleted) {
-    throw new AppError("Empresa no encontrada", 404);
+    throw AppError.notFound("Empresa no encontrada");
   }
 
-  company.logo = `/uploads/${req.file.filename}`;
+  const optimizedLogoBuffer = await sharp(req.file.buffer)
+    .resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true })
+    .webp({ quality: 85 })
+    .toBuffer();
+
+  const uploadedLogo = await uploadImageBuffer(
+    optimizedLogoBuffer,
+    "bildyapp/logos"
+  );
+
+  company.logo = uploadedLogo.url;
   await company.save();
 
   const populatedUser = await User.findById(user._id)
@@ -365,15 +380,15 @@ export const uploadCompanyLogo = catchAsync(async (req, res) => {
     message: "Logo subido correctamente",
     data: { user: populatedUser },
   });
-});
+};
 
-export const deleteUser = catchAsync(async (req, res) => {
+export const deleteUser = async (req, res) => {
   const { soft } = req.query;
 
   const user = await User.findById(req.user._id);
 
   if (!user || user.deleted) {
-    throw new AppError("Usuario no encontrado", 404);
+    throw AppError.notFound("Usuario no encontrado");
   }
 
   if (soft === "true") {
@@ -397,29 +412,29 @@ export const deleteUser = catchAsync(async (req, res) => {
     ok: true,
     message: "Usuario eliminado definitivamente",
   });
-});
+};
 
-export const inviteUser = catchAsync(async (req, res) => {
+export const inviteUser = async (req, res) => {
   const { email, password } = req.body;
 
   const adminUser = await User.findById(req.user._id);
 
   if (!adminUser || adminUser.deleted) {
-    throw new AppError("Usuario no encontrado", 404);
+    throw AppError.notFound("Usuario no encontrado");
   }
 
   if (adminUser.role !== "admin") {
-    throw new AppError("No tienes permisos para invitar usuarios", 403);
+    throw AppError.forbidden("No tienes permisos para invitar usuarios");
   }
 
   if (!adminUser.company) {
-    throw new AppError("Debes tener una empresa asociada para invitar usuarios", 400);
+    throw AppError.badRequest("Debes tener una empresa asociada para invitar usuarios");
   }
 
   const existingUser = await User.findOne({ email });
 
   if (existingUser && !existingUser.deleted) {
-    throw new AppError("Ya existe un usuario registrado con ese email", 409);
+    throw AppError.conflict("Ya existe un usuario registrado con ese email");
   }
 
   const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 10;
@@ -450,21 +465,21 @@ export const inviteUser = catchAsync(async (req, res) => {
       },
     },
   });
-});
+};
 
-export const changePassword = catchAsync(async (req, res) => {
+export const changePassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
   const user = await User.findById(req.user._id);
 
   if (!user || user.deleted) {
-    throw new AppError("Usuario no encontrado", 404);
+    throw AppError.notFound("Usuario no encontrado");
   }
 
   const isMatch = await bcrypt.compare(currentPassword, user.password);
 
   if (!isMatch) {
-    throw new AppError("La contraseña actual es incorrecta", 401);
+    throw AppError.unauthorized("La contraseña actual es incorrecta");
   }
 
   const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS) || 10;
@@ -478,4 +493,4 @@ export const changePassword = catchAsync(async (req, res) => {
     ok: true,
     message: "Contraseña actualizada correctamente. Debes iniciar sesión de nuevo.",
   });
-});
+};

@@ -17,7 +17,17 @@ const protect = catchAsync(async (req, res, next) => {
     throw new AppError("No autorizado, token no proporcionado", 401);
   }
 
-  const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+  let decoded;
+
+  try {
+    decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      throw new AppError("Token expirado", 401);
+    }
+
+    throw new AppError("Token inválido", 401);
+  }
 
   const user = await User.findById(decoded.id);
 

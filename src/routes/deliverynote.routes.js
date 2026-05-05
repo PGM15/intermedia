@@ -3,6 +3,7 @@ import {
   createDeliveryNote,
   getDeliveryNotes,
   getDeliveryNoteById,
+  updateDeliveryNote,
   deleteDeliveryNote,
   signDeliveryNote,
   downloadDeliveryNotePdf,
@@ -10,7 +11,10 @@ import {
 import validate from "../middleware/validate.middleware.js";
 import protect from "../middleware/aut.middleware.js";
 import upload from "../middleware/upload.middleware.js";
-import { createDeliveryNoteSchema } from "../validators/deliverynote.validator.js";
+import {
+  createDeliveryNoteSchema,
+  updateDeliveryNoteSchema,
+} from "../validators/deliverynote.validator.js";
 
 const router = Router();
 
@@ -195,6 +199,49 @@ router
  *         description: Albarán encontrado
  *       404:
  *         description: No encontrado
+ *   put:
+ *     summary: Actualizar un albarán no firmado
+ *     tags: [DeliveryNote]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             description: Trabajo actualizado
+ *             hours: 6
+ *     responses:
+ *       200:
+ *         description: Albarán actualizado correctamente
+ *       400:
+ *         description: No se puede modificar si está firmado o los datos no son válidos
+ *       404:
+ *         description: No encontrado
+ *   patch:
+ *     summary: Actualizar parcialmente un albarán no firmado
+ *     tags: [DeliveryNote]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Albarán actualizado correctamente
+ *       400:
+ *         description: No se puede modificar si está firmado o los datos no son válidos
+ *       404:
+ *         description: No encontrado
  *   delete:
  *     summary: Eliminar albarán
  *     tags: [DeliveryNote]
@@ -217,6 +264,8 @@ router
 router
   .route("/:id")
   .get(getDeliveryNoteById)
+  .put(validate(updateDeliveryNoteSchema), updateDeliveryNote)
+  .patch(validate(updateDeliveryNoteSchema), updateDeliveryNote)
   .delete(deleteDeliveryNote);
 
 export default router;

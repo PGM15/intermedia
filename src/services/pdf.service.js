@@ -1,6 +1,18 @@
 import PDFDocument from "pdfkit";
 
-export const generateDeliveryNotePdfBuffer = (deliveryNote) => {
+const formatAddress = (address = {}) =>
+  [
+    address.street,
+    address.number,
+    address.postal || address.postalCode,
+    address.city,
+    address.province,
+    address.country,
+  ]
+    .filter(Boolean)
+    .join(", ") || "-";
+
+export const generateDeliveryNotePdfBuffer = (deliveryNote, options = {}) => {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 50 });
     const chunks = [];
@@ -18,9 +30,25 @@ export const generateDeliveryNotePdfBuffer = (deliveryNote) => {
     doc.text(`Descripción: ${deliveryNote.description || "-"}`);
     doc.moveDown();
 
-    doc.text(`Usuario: ${deliveryNote.user?.name || ""} ${deliveryNote.user?.lastName || ""}`);
-    doc.text(`Cliente: ${deliveryNote.client?.name || "-"}`);
-    doc.text(`Proyecto: ${deliveryNote.project?.name || "-"}`);
+    doc.fontSize(14).text("Usuario");
+    doc.fontSize(12).text(`Nombre: ${deliveryNote.user?.name || ""} ${deliveryNote.user?.lastName || ""}`.trim());
+    doc.text(`Email: ${deliveryNote.user?.email || "-"}`);
+    doc.moveDown();
+
+    doc.fontSize(14).text("Cliente");
+    doc.fontSize(12).text(`Nombre: ${deliveryNote.client?.name || "-"}`);
+    doc.text(`CIF/NIF: ${deliveryNote.client?.cif || "-"}`);
+    doc.text(`Email: ${deliveryNote.client?.email || "-"}`);
+    doc.text(`Teléfono: ${deliveryNote.client?.phone || "-"}`);
+    doc.text(`Dirección: ${formatAddress(deliveryNote.client?.address)}`);
+    doc.moveDown();
+
+    doc.fontSize(14).text("Proyecto");
+    doc.fontSize(12).text(`Nombre: ${deliveryNote.project?.name || "-"}`);
+    doc.text(`Código: ${deliveryNote.project?.projectCode || "-"}`);
+    doc.text(`Email: ${deliveryNote.project?.email || "-"}`);
+    doc.text(`Dirección: ${formatAddress(deliveryNote.project?.address)}`);
+    doc.text(`Notas: ${deliveryNote.project?.notes || "-"}`);
     doc.moveDown();
 
     if (deliveryNote.format === "material") {
@@ -50,7 +78,14 @@ export const generateDeliveryNotePdfBuffer = (deliveryNote) => {
       doc.text(`Fecha de firma: ${new Date(deliveryNote.signedAt).toLocaleString()}`);
     }
 
-    if (deliveryNote.signatureUrl) {
+    if (options.signatureBuffer) {
+      doc.moveDown();
+      doc.text("Firma:");
+      doc.image(options.signatureBuffer, {
+        fit: [220, 100],
+        align: "left",
+      });
+    } else if (deliveryNote.signatureUrl) {
       doc.moveDown();
       doc.text(`Firma: ${deliveryNote.signatureUrl}`);
     }

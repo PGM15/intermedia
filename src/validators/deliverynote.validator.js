@@ -19,3 +19,5 @@ export const createDeliveryNoteSchema = z.object({
   hours: z.number().min(0).optional(),
   workers: z.array(workerSchema).optional(),
 });
+
+export const updateDeliveryNoteSchema = createDeliveryNoteSchema.partial();

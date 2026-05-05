@@ -2,9 +2,11 @@ import { Router } from "express";
 import {
   createProject,
   getProjects,
+  getArchivedProjects,
   getProjectById,
   updateProject,
   deleteProject,
+  restoreProject,
 } from "../controllers/project.controller.js";
 import validate from "../middleware/validate.middleware.js";
 import protect from "../middleware/aut.middleware.js";
@@ -13,6 +15,42 @@ import { createProjectSchema, updateProjectSchema } from "../validators/project.
 const router = Router();
 
 router.use(protect);
+
+/**
+ * @swagger
+ * /api/project/archived:
+ *   get:
+ *     summary: Listar proyectos archivados
+ *     tags: [Project]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de proyectos archivados
+ */
+router.get("/archived", getArchivedProjects);
+
+/**
+ * @swagger
+ * /api/project/{id}/restore:
+ *   patch:
+ *     summary: Restaurar un proyecto archivado
+ *     tags: [Project]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Proyecto restaurado
+ *       404:
+ *         description: Proyecto archivado no encontrado
+ */
+router.patch("/:id/restore", restoreProject);
 
 /**
  * @swagger
@@ -40,6 +78,34 @@ router.use(protect);
  *     tags: [Project]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           example: 10
+ *       - in: query
+ *         name: client
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: active
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           example: -createdAt
  *     responses:
  *       200:
  *         description: Lista de proyectos
@@ -68,8 +134,26 @@ router
  *         description: Proyecto encontrado
  *       404:
  *         description: Proyecto no encontrado
- *   patch:
+ *   put:
  *     summary: Actualizar proyecto
+ *     tags: [Project]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Proyecto actualizado
+ *       400:
+ *         description: Datos inválidos
+ *       404:
+ *         description: Proyecto no encontrado
+ *   patch:
+ *     summary: Actualizar proyecto parcialmente
  *     tags: [Project]
  *     security:
  *       - bearerAuth: []
@@ -106,6 +190,7 @@ router
 router
   .route("/:id")
   .get(getProjectById)
+  .put(validate(updateProjectSchema), updateProject)
   .patch(validate(updateProjectSchema), updateProject)
   .delete(deleteProject);
 

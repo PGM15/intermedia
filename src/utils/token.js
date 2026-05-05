@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import AppError from "./appError.js";
 
 export const generateAccessToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_ACCESS_SECRET, {
@@ -17,5 +18,9 @@ export const verifyAccessToken = (token) => {
 };
 
 export const verifyRefreshToken = (token) => {
-  return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+  try {
+    return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+  } catch (error) {
+    throw AppError.unauthorized("Refresh token inválido o expirado");
+  }
 };
